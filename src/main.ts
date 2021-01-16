@@ -1,5 +1,4 @@
 import Phaser from 'phaser'
-
 import Game from './scenes/Game'
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -9,7 +8,7 @@ const config: Phaser.Types.Core.GameConfig = {
 	physics: {
 		default: 'matter',
 		matter: {
-			debug: true
+			debug: false
 		}
 	},
 	scene: [Game]

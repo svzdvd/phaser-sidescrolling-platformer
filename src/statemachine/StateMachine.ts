@@ -57,6 +57,8 @@ export default class StateMachine
             this.currentState.onExit();
         }
 
+        console.log(`StateMachine ${this.name}: from ${this.currentState?.name} to ${name}`);
+
         this.currentState = this.states.get(name);
         if (this.currentState?.onEnter)
         {
