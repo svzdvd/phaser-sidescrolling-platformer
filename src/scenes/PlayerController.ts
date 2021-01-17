@@ -1,5 +1,6 @@
-import Phaser from 'phaser'
-import StateMachine from '../statemachine/StateMachine'
+import Phaser from 'phaser';
+import StateMachine from '../statemachine/StateMachine';
+import { sharedInstance as events } from './EventCenter';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 
@@ -15,6 +16,8 @@ export default class PlayerController
     {
         this.sprite = sprite;
         this.cursors = cursors;
+
+        this.sprite.setFriction(0.001);
 
         this.createAnimations();
 
@@ -35,10 +38,30 @@ export default class PlayerController
             .setState('idle');
 
         this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
-            console.log(data.collision.normal.x);
-            if (this.stateMachine.isCurrentState('jump'))
+            // console.log(data.collision.normal.x);
+            
+            const body = (this.isPenguinBody(data.bodyA) ? data.bodyB : data.bodyA)  as MatterJS.BodyType;
+            const gameObject = body.gameObject;
+
+            if (gameObject instanceof Phaser.Physics.Matter.TileBody) 
             {
-                this.stateMachine.setState('idle');
+                if (this.stateMachine.isCurrentState('jump'))
+                {
+                    this.stateMachine.setState('idle');
+                }
+            }
+            else if (gameObject instanceof Phaser.Physics.Matter.Sprite)
+            {
+                const type = gameObject.getData('type') as string;
+                switch(type)
+                {
+                    case 'star':
+                    {
+                        events.emit('star-collected');
+                        gameObject.destroy();
+                        break;
+                    }
+                }
             }
         });
     }
@@ -46,6 +69,17 @@ export default class PlayerController
     update(deltaTime: number)
     {
         this.stateMachine.update(deltaTime);
+    }
+
+    private isPenguinBody(body: MatterJS.Body)
+    {
+        const gameObject = (body as MatterJS.BodyType).gameObject;
+        if (gameObject instanceof Phaser.Physics.Matter.Sprite)
+        {
+            const type = gameObject.getData('type');
+            return type === 'penguin';
+        }
+        return false;
     }
 
     private idleOnEnter()
