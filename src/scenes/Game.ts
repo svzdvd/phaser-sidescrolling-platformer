@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import ObstaclesController from './ObstaclesController';
 import PlayerController from './PlayerController'
 
 export default class Game extends Phaser.Scene 
@@ -6,6 +7,7 @@ export default class Game extends Phaser.Scene
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private penguin?: Phaser.Physics.Matter.Sprite;
     private playerController?: PlayerController;
+    private obstacles!: ObstaclesController;
 
     constructor()
     {
@@ -15,13 +17,14 @@ export default class Game extends Phaser.Scene
     init()
     {
         this.cursors = this.input.keyboard.createCursorKeys();
+        this.obstacles = new ObstaclesController();
     }
 
     preload()
     {
         this.load.atlas('penguin','assets/penguin.png','assets/penguin.json');
         this.load.image('tiles' , 'assets/sheet.png');
-        this.load.tilemapTiledJSON ('tilemap' , 'assets/game.json');
+        this.load.tilemapTiledJSON('tilemap' , 'assets/game.json');
         this.load.image('star', 'assets/star.png');
     }
 
@@ -30,11 +33,13 @@ export default class Game extends Phaser.Scene
         this.scene.launch('ui');
 
         const map = this.make.tilemap({ key : 'tilemap' });
-        const tileset = map.addTilesetImage ('iceworld' , 'tiles');
+        const tileset = map.addTilesetImage('iceworld' , 'tiles');
     
         const ground = map.createLayer('ground', tileset);
         ground.setCollisionByProperty({ collides: true });
         this.matter.world.convertTilemapLayer(ground);
+
+        map.createLayer('obstacles', tileset);
 
         const { width, height } = this.scale;
 
@@ -48,7 +53,7 @@ export default class Game extends Phaser.Scene
                     this.penguin = this.matter.add.sprite(x + (width * 0.5), y + (width * 0.5), 'penguin')
                         .setFixedRotation();
                     this.penguin.setData('type', 'penguin');                        
-                    this.playerController = new PlayerController(this.penguin, this.cursors);        
+                    this.playerController = new PlayerController(this, this.penguin, this.cursors, this.obstacles);        
                     this.cameras.main.startFollow(this.penguin);
                     break;
                 }
@@ -59,6 +64,16 @@ export default class Game extends Phaser.Scene
                         isSensor: true
                     });
                     star.setData('type', 'star');
+                    break;
+                }
+                case 'spike':
+                {
+                    console.log(objData);
+                    // TODO fix x and y
+                    const spike = this.matter.add.fromVertices(x + 35, y - (35 / 2), objData.polygon!, {
+                        isStatic: true
+                    });
+                    this.obstacles.add('spikes', spike);
                     break;
                 }
             }

@@ -1,21 +1,26 @@
 import Phaser from 'phaser';
 import StateMachine from '../statemachine/StateMachine';
 import { sharedInstance as events } from './EventCenter';
+import ObstaclesController from './ObstaclesController';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 
 export default class PlayerController 
 {
+    private scene: Phaser.Scene;
     private sprite: Phaser.Physics.Matter.Sprite;
     private cursors: CursorKeys;
+    private obstacles: ObstaclesController;    
     private stateMachine: StateMachine;
     private speed: number = 5;
     private jumpSpeed: number = 10;
 
-    constructor(sprite: Phaser.Physics.Matter.Sprite, cursors: CursorKeys)
+    constructor(scene: Phaser.Scene, sprite: Phaser.Physics.Matter.Sprite, cursors: CursorKeys, obstacles: ObstaclesController)
     {
+        this.scene = scene;
         this.sprite = sprite;
         this.cursors = cursors;
+        this.obstacles = obstacles;
 
         this.sprite.setFriction(0.001);
 
@@ -35,13 +40,29 @@ export default class PlayerController
                 onEnter: this.jumpOnEnter,
                 onUpdate: this.jumpOnUpdate
             })
+            .addState('spike-hit', {
+                onEnter: this.spikeHitOnEnter
+            })
             .setState('idle');
 
         this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
             // console.log(data.collision.normal.x);
             
             const body = (this.isPenguinBody(data.bodyA) ? data.bodyB : data.bodyA)  as MatterJS.BodyType;
+            console.log(body);
+
+            // TODO why we have to check the parent?
+            if (this.obstacles.has('spikes', body) || this.obstacles.has('spikes', body.parent))
+            {
+                this.stateMachine.setState('spike-hit');
+                return;
+            }
+
             const gameObject = body.gameObject;
+            if (!gameObject) 
+            {
+                return;
+            }
 
             if (gameObject instanceof Phaser.Physics.Matter.TileBody) 
             {
@@ -148,6 +169,33 @@ export default class PlayerController
             this.sprite.flipX = false;            
             this.sprite.setVelocityX(this.speed);
         }
+    }
+
+    private spikeHitOnEnter() 
+    {
+        this.sprite.setVelocityY(-12);
+
+        const startColor = Phaser.Display.Color.ValueToColor(0xffffff);
+        const endColor = Phaser.Display.Color.ValueToColor(0xff0000);
+        this.scene.tweens.addCounter({
+            from: 0,
+            to: 100,
+            duration: 100,
+            repeat: 2,
+            yoyo: true,
+            onUpdate: tween => {
+                const value = tween.getValue();
+                const colorObject = Phaser.Display.Color.Interpolate.ColorWithColor(
+                    startColor,
+                    endColor,
+                    100,
+                    value
+                );
+                const color = Phaser.Display.Color.GetColor(colorObject.r, colorObject.g, colorObject.b);
+                this.sprite.setTint(color);
+            }
+        });
+        this.stateMachine.setState('idle');
     }
 
     private createAnimations()
