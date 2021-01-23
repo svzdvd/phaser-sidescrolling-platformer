@@ -14,6 +14,7 @@ export default class PlayerController
     private stateMachine: StateMachine;
     private speed: number = 5;
     private jumpSpeed: number = 10;
+    private health: number = 100;
 
     constructor(scene: Phaser.Scene, sprite: Phaser.Physics.Matter.Sprite, cursors: CursorKeys, obstacles: ObstaclesController)
     {
@@ -49,7 +50,7 @@ export default class PlayerController
             // console.log(data.collision.normal.x);
             
             const body = (this.isPenguinBody(data.bodyA) ? data.bodyB : data.bodyA)  as MatterJS.BodyType;
-            console.log(body);
+            // console.log(body);
 
             // TODO why we have to check the parent?
             if (this.obstacles.has('spikes', body) || this.obstacles.has('spikes', body.parent))
@@ -82,6 +83,16 @@ export default class PlayerController
                         gameObject.destroy();
                         break;
                     }
+                    case 'health':
+                    {
+                        const healthPoints = sprite.getData('healthPoints') ?? 10;
+
+                        const previousHealth = this.health;
+                        this.health = Phaser.Math.Clamp(this.health + healthPoints, 0, 100);
+                        events.emit('health-changed', previousHealth, this.health);
+                        gameObject.destroy();
+                        break;
+                    }                    
                 }
             }
         });
@@ -174,6 +185,11 @@ export default class PlayerController
     private spikeHitOnEnter() 
     {
         this.sprite.setVelocityY(-12);
+
+        const previousHealth = this.health;
+        this.health = Phaser.Math.Clamp(this.health - 10, 0, 100);
+        // TODO use enum
+        events.emit('health-changed', previousHealth, this.health);
 
         const startColor = Phaser.Display.Color.ValueToColor(0xffffff);
         const endColor = Phaser.Display.Color.ValueToColor(0xff0000);

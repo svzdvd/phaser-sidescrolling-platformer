@@ -26,6 +26,7 @@ export default class Game extends Phaser.Scene
         this.load.image('tiles' , 'assets/sheet.png');
         this.load.tilemapTiledJSON('tilemap' , 'assets/game.json');
         this.load.image('star', 'assets/star.png');
+        this.load.image('health', 'assets/health.png');
     }
 
     create()
@@ -66,6 +67,20 @@ export default class Game extends Phaser.Scene
                     star.setData('type', 'star');
                     break;
                 }
+                case 'health':
+                {
+                    const health = this.matter.add.sprite(x + (width * 0.5), y + (width * 0.5), 'health', undefined, {
+                        isStatic: true,
+                        isSensor: true
+                    });
+                    
+                    // TODO resize image
+                    health.setDisplaySize(70, 70);
+
+                    health.setData('type', 'health');
+                    health.setData('healthPoints', 10);
+                    break;
+                }                
                 case 'spike':
                 {
                     console.log(objData);

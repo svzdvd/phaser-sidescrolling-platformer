@@ -201,6 +201,17 @@
                  "width":0,
                  "x":2660.33333333333,
                  "y":768.333333333333
+                }, 
+                {
+                 "height":70,
+                 "id":40,
+                 "name":"health",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":70,
+                 "x":1190,
+                 "y":910
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -221,7 +232,7 @@
          "y":0
         }],
  "nextlayerid":4,
- "nextobjectid":40,
+ "nextobjectid":41,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.4.3",
