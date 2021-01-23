@@ -1,12 +1,15 @@
 import Phaser from 'phaser'
 import ObstaclesController from './ObstaclesController';
 import PlayerController from './PlayerController'
+import SnowmanController from './SnowmanController'
 
 export default class Game extends Phaser.Scene 
 {  
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private penguin?: Phaser.Physics.Matter.Sprite;
+    // private snowman?: Phaser.Physics.Matter.Sprite;
     private playerController?: PlayerController;
+    private snowmanControllers: SnowmanController[] = [];
     private obstacles!: ObstaclesController;
 
     constructor()
@@ -18,6 +21,7 @@ export default class Game extends Phaser.Scene
     {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.obstacles = new ObstaclesController();
+        this.snowmanControllers = [];
     }
 
     preload()
@@ -27,6 +31,7 @@ export default class Game extends Phaser.Scene
         this.load.tilemapTiledJSON('tilemap' , 'assets/game.json');
         this.load.image('star', 'assets/star.png');
         this.load.image('health', 'assets/health.png');
+        this.load.atlas('snowman','assets/snowman.png','assets/snowman.json');
     }
 
     create()
@@ -58,6 +63,14 @@ export default class Game extends Phaser.Scene
                     this.cameras.main.startFollow(this.penguin);
                     break;
                 }
+                case 'snowman':
+                {
+                    const snowman = this.matter.add.sprite(x + (width * 0.5), y + (width * 0.5), 'snowman')
+                        .setFixedRotation();
+                    snowman.setData('type', 'snowman');
+                    this.snowmanControllers.push(new SnowmanController(snowman));
+                    break;
+                }
                 case 'star':
                 {
                     const star = this.matter.add.sprite(x + (width * 0.5), y + (width * 0.5), 'star', undefined, {
@@ -83,7 +96,7 @@ export default class Game extends Phaser.Scene
                 }                
                 case 'spike':
                 {
-                    console.log(objData);
+                    // console.log(objData);
                     // TODO fix x and y
                     const spike = this.matter.add.fromVertices(x + 35, y - (35 / 2), objData.polygon!, {
                         isStatic: true
@@ -97,11 +110,14 @@ export default class Game extends Phaser.Scene
 
     update(time: number, deltaTime: number)
     {
-        if (!this.playerController) 
+        if (this.playerController) 
         {
-            return;
+            this.playerController.update(deltaTime);
         }
 
-        this.playerController.update(deltaTime);
+        this.snowmanControllers.forEach(snowman => 
+        {
+            snowman.update(deltaTime);
+        });
     }
 }
