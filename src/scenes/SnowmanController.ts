@@ -1,17 +1,20 @@
 import Phaser from 'phaser';
 import StateMachine from '../statemachine/StateMachine';
+import {sharedInstance as events} from'./EventCenter';
 
 export default class SnowmanController 
 {
     private sprite: Phaser.Physics.Matter.Sprite;
     private stateMachine: StateMachine;
     private moveTime: number = 0;
-    private speed: number = 10;
+    private speed: number = 3;
+    private scene: Phaser.Scene
 
-    constructor(sprite: Phaser.Physics.Matter.Sprite)
+    constructor(scene: Phaser.Scene, sprite: Phaser.Physics.Matter.Sprite)
     {
+        this.scene = scene;
         this.sprite = sprite;
-
+        
         this.createAnimations();
 
         this.stateMachine = new StateMachine(this, 'snowman');
@@ -28,9 +31,16 @@ export default class SnowmanController
                 onUpdate: this.moveRightOnUpdate
             })
             .addState('dead')
-            .setState('idle');        
-    }
+            .setState('idle');  
 
+        events.on('snoman-stomped', this.handleStomped, this)     
+    }
+               
+    destroy()
+    {
+        events.off('snoman-stomped', this.handleStomped, this)       
+    }
+   
     update(deltaTime: number)
     {
         this.stateMachine.update(deltaTime);
@@ -46,7 +56,7 @@ export default class SnowmanController
 
         this.sprite.anims.create({
             key: 'snowman-walk-left',
-            frameRate: 10,
+            frameRate: 5,
             frames: this.sprite.anims.generateFrameNames('snowman', {
                 start: 1, 
                 end: 2,
@@ -58,7 +68,7 @@ export default class SnowmanController
 
         this.sprite.anims.create({
             key: 'snowman-walk-right',
-            frameRate: 10,
+            frameRate: 5,
             frames: this.sprite.anims.generateFrameNames('snowman', {
                 start: 1, 
                 end: 2,
@@ -114,4 +124,25 @@ export default class SnowmanController
         }        
     }
 
+    private handleStomped(snowman: Phaser.Physics.Matter.Sprite)
+    {
+        if (this.sprite !== snowman)
+        {
+            return;
+        }
+
+        events.off('snoman-stomped', this.handleStomped, this);
+
+        this.scene.tweens.add({
+            targets: this.sprite,
+            displayHeight: 0,
+            y: this.sprite.y + (this.sprite.displayHeight * 0.5),
+            duration: 200,
+            onComplete: () => {
+                this.sprite.destroy
+            }
+        });
+
+        this.stateMachine.setState('dead');
+    }
 }

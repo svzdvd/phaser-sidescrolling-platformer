@@ -1,7 +1,7 @@
-import Phaser from 'phaser'
+import Phaser from 'phaser';
 import ObstaclesController from './ObstaclesController';
-import PlayerController from './PlayerController'
-import SnowmanController from './SnowmanController'
+import PlayerController from './PlayerController';
+import SnowmanController from './SnowmanController';
 
 export default class Game extends Phaser.Scene 
 {  
@@ -22,6 +22,10 @@ export default class Game extends Phaser.Scene
         this.cursors = this.input.keyboard.createCursorKeys();
         this.obstacles = new ObstaclesController();
         this.snowmanControllers = [];
+
+        this.events.once(Phaser.Scenes.Events.DESTROY, () => {
+            this.destroy();
+        });   
     }
 
     preload()
@@ -68,7 +72,8 @@ export default class Game extends Phaser.Scene
                     const snowman = this.matter.add.sprite(x + (width * 0.5), y + (width * 0.5), 'snowman')
                         .setFixedRotation();
                     snowman.setData('type', 'snowman');
-                    this.snowmanControllers.push(new SnowmanController(snowman));
+                    this.snowmanControllers.push(new SnowmanController(this, snowman));
+                    this.obstacles.add('snowman', snowman.body as MatterJS.BodyType);
                     break;
                 }
                 case 'star':
@@ -118,6 +123,14 @@ export default class Game extends Phaser.Scene
         this.snowmanControllers.forEach(snowman => 
         {
             snowman.update(deltaTime);
+        });
+    }
+
+    destroy() 
+    {
+        this.snowmanControllers.forEach(snowman => 
+        {
+            snowman.destroy();
         });
     }
 }

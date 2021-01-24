@@ -16,6 +16,8 @@ export default class PlayerController
     private jumpSpeed: number = 10;
     private health: number = 100;
 
+    private lastSnowman?: Phaser.Physics.Matter.Sprite;
+
     constructor(scene: Phaser.Scene, sprite: Phaser.Physics.Matter.Sprite, cursors: CursorKeys, obstacles: ObstaclesController)
     {
         this.scene = scene;
@@ -44,6 +46,12 @@ export default class PlayerController
             .addState('spike-hit', {
                 onEnter: this.spikeHitOnEnter
             })
+            .addState('snowman-hit', {
+                onEnter: this.snowmanHitOnEnter
+            })
+            .addState('snowman-stomp', {
+                onEnter: this.snowmanStompOnEnter
+            })
             .setState('idle');
 
         this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
@@ -56,6 +64,23 @@ export default class PlayerController
             if (this.obstacles.has('spikes', body) || this.obstacles.has('spikes', body.parent))
             {
                 this.stateMachine.setState('spike-hit');
+                return;
+            }
+            else if (this.obstacles.has('snowman', body))
+            {
+                this.lastSnowman = body.gameObject;
+
+                // TODO improve y or use MatterJS compound body to add sensor at the penguin bottom?
+                if (this.sprite.y < body.position.y)
+                {
+                    // stomp on snowman
+                    this.stateMachine.setState('snowman-stomp')
+                }
+                else 
+                {
+                    // hit by snowman
+                    this.stateMachine.setState('snowman-hit');
+                }
                 return;
             }
 
@@ -84,7 +109,7 @@ export default class PlayerController
                         break;
                     }
                     case 'health':
-                    {
+                    {   
                         const healthPoints = sprite.getData('healthPoints') ?? 10;
 
                         const previousHealth = this.health;
@@ -214,6 +239,57 @@ export default class PlayerController
         this.stateMachine.setState('idle');
     }
 
+    private snowmanHitOnEnter()
+    {
+        this.sprite.setVelocityY(-12);
+        if (this.lastSnowman)
+        {
+            if (this.sprite.x < this.lastSnowman.x)
+            {
+                this.sprite.setVelocityX(-20);
+            }
+            else
+            {
+                this.sprite.setVelocityX(20);                
+            }
+        }
+
+        // TODO remove duplicated code
+        const previousHealth = this.health;
+        this.health = Phaser.Math.Clamp(this.health - 10, 0, 100);
+        // TODO use enum
+        events.emit('health-changed', previousHealth, this.health);
+
+        const startColor = Phaser.Display.Color.ValueToColor(0xffffff);
+        const endColor = Phaser.Display.Color.ValueToColor(0x0000ff);
+        this.scene.tweens.addCounter({
+            from: 0,
+            to: 100,
+            duration: 100,
+            repeat: 2,
+            yoyo: true,
+            onUpdate: tween => {
+                const value = tween.getValue();
+                const colorObject = Phaser.Display.Color.Interpolate.ColorWithColor(
+                    startColor,
+                    endColor,
+                    100,
+                    value
+                );
+                const color = Phaser.Display.Color.GetColor(colorObject.r, colorObject.g, colorObject.b);
+                this.sprite.setTint(color);
+            }
+        });
+        this.stateMachine.setState('idle');        
+    }
+
+    private snowmanStompOnEnter()
+    {
+        this.sprite.setVelocityY(-10)
+        events.emit('snoman-stomped', this.lastSnowman)
+        this.stateMachine.setState('idle')
+    }
+    
     private createAnimations()
     {
         this.sprite.anims.create({
