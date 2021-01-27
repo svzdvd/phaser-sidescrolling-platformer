@@ -52,6 +52,9 @@ export default class PlayerController
             .addState('snowman-stomp', {
                 onEnter: this.snowmanStompOnEnter
             })
+            .addState('dead', {
+                onEnter: this.deadOnEnter
+            })
             .setState('idle');
 
         this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
@@ -126,6 +129,20 @@ export default class PlayerController
     update(deltaTime: number)
     {
         this.stateMachine.update(deltaTime);
+    }
+
+    private setHealth(value: number)
+    {
+        const previousHealth = this.health;
+        this.health = Phaser.Math.Clamp(value, 0, 100);
+        // TODO use enum
+        events.emit('health-changed', previousHealth, this.health);
+        
+        // check for death
+        if (this.health <= 0)
+        {
+            this.stateMachine.setState('dead');
+        }
     }
 
     private isPenguinBody(body: MatterJS.Body)
@@ -211,11 +228,6 @@ export default class PlayerController
     {
         this.sprite.setVelocityY(-12);
 
-        const previousHealth = this.health;
-        this.health = Phaser.Math.Clamp(this.health - 10, 0, 100);
-        // TODO use enum
-        events.emit('health-changed', previousHealth, this.health);
-
         const startColor = Phaser.Display.Color.ValueToColor(0xffffff);
         const endColor = Phaser.Display.Color.ValueToColor(0xff0000);
         this.scene.tweens.addCounter({
@@ -236,7 +248,9 @@ export default class PlayerController
                 this.sprite.setTint(color);
             }
         });
+
         this.stateMachine.setState('idle');
+        this.setHealth(this.health - 10);
     }
 
     private snowmanHitOnEnter()
@@ -244,6 +258,7 @@ export default class PlayerController
         this.sprite.setVelocityY(-12);
         if (this.lastSnowman)
         {
+            // TODO improve (check if penguin velocity is going down?)
             if (this.sprite.x < this.lastSnowman.x)
             {
                 this.sprite.setVelocityX(-20);
@@ -255,11 +270,6 @@ export default class PlayerController
         }
 
         // TODO remove duplicated code
-        const previousHealth = this.health;
-        this.health = Phaser.Math.Clamp(this.health - 10, 0, 100);
-        // TODO use enum
-        events.emit('health-changed', previousHealth, this.health);
-
         const startColor = Phaser.Display.Color.ValueToColor(0xffffff);
         const endColor = Phaser.Display.Color.ValueToColor(0x0000ff);
         this.scene.tweens.addCounter({
@@ -280,7 +290,9 @@ export default class PlayerController
                 this.sprite.setTint(color);
             }
         });
-        this.stateMachine.setState('idle');        
+
+        this.stateMachine.setState('idle');    
+        this.setHealth(this.health - 10);    
     }
 
     private snowmanStompOnEnter()
@@ -290,6 +302,16 @@ export default class PlayerController
         this.stateMachine.setState('idle')
     }
     
+    private deadOnEnter()
+    {
+        this.sprite.play('player-die');
+        this.sprite.setOnCollide(() => {});
+
+        this.scene.time.delayedCall(2000, () => {
+            this.scene.scene.start('game-over');
+        });
+    }
+
     private createAnimations()
     {
         this.sprite.anims.create({
@@ -308,6 +330,17 @@ export default class PlayerController
                 suffix: '.png'
             }),
             repeat: -1
+        });
+
+        this.sprite.anims.create({
+            key: 'player-die',
+            frameRate: 10,
+            frames: this.sprite.anims.generateFrameNames('penguin', {
+                start: 1, 
+                end: 4,
+                prefix: 'penguin_die0',
+                suffix: '.png'
+            })
         });
     }
 }
